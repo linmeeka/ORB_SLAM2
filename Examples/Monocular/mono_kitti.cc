@@ -34,6 +34,10 @@ using namespace std;
 void LoadImages(const string &strSequence, vector<string> &vstrImageFilenames,
                 vector<double> &vTimestamps);
 
+/*
+src里面都是功能类，还会被编成库
+在这调用
+*/
 int main(int argc, char **argv)
 {
     if(argc != 4)
@@ -80,6 +84,7 @@ int main(int argc, char **argv)
         std::chrono::monotonic_clock::time_point t1 = std::chrono::monotonic_clock::now();
 #endif
 
+        // 在这里，处理每一帧！！
         // Pass the image to the SLAM system
         SLAM.TrackMonocular(im,tframe);
 

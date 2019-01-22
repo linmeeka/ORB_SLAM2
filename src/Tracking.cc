@@ -42,7 +42,10 @@ using namespace std;
 
 namespace ORB_SLAM2
 {
+/*
+init tracking state as NO_IMAGES_YET
 
+*/
 Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Map *pMap, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor):
     mState(NO_IMAGES_YET), mSensor(sensor), mbOnlyTracking(false), mbVO(false), mpORBVocabulary(pVoc),
     mpKeyFrameDB(pKFDB), mpInitializer(static_cast<Initializer*>(NULL)), mpSystem(pSys), mpViewer(NULL),
@@ -238,7 +241,7 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
 cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 {
     mImGray = im;
-
+    // convert to gray image
     if(mImGray.channels()==3)
     {
         if(mbRGB)
@@ -294,32 +297,39 @@ void Tracking::Track()
         bool bOK;
 
         // Initial camera pose estimation using motion model or relocalization (if tracking is lost)
+        // tracking local mapping and loop closing
         if(!mbOnlyTracking)
         {
             // Local Mapping is activated. This is the normal behaviour, unless
             // you explicitly activate the "only tracking" mode.
 
+            // 
             if(mState==OK)
             {
                 // Local Mapping might have changed some MapPoints tracked in last frame
                 CheckReplacedInLastFrame();
-
+                // no motion model
+                // in case of relocalization too often
                 if(mVelocity.empty() || mCurrentFrame.mnId<mnLastRelocFrameId+2)
                 {
                     bOK = TrackReferenceKeyFrame();
                 }
+                // there is a motion model
                 else
                 {
                     bOK = TrackWithMotionModel();
+                    // build failed
                     if(!bOK)
                         bOK = TrackReferenceKeyFrame();
                 }
             }
+            // relocalization, reference frame track failed
             else
             {
                 bOK = Relocalization();
             }
         }
+        // localization only mode
         else
         {
             // Localization Mode: Local Mapping is deactivated
@@ -333,7 +343,7 @@ void Tracking::Track()
                 if(!mbVO)
                 {
                     // In last frame we tracked enough MapPoints in the map
-
+                    // in this case ,can relocalization in no limitation
                     if(!mVelocity.empty())
                     {
                         bOK = TrackWithMotionModel();
@@ -343,6 +353,7 @@ void Tracking::Track()
                         bOK = TrackReferenceKeyFrame();
                     }
                 }
+                // no enough map points 
                 else
                 {
                     // In last frame we tracked mainly "visual odometry" points.
@@ -421,6 +432,7 @@ void Tracking::Track()
         if(bOK)
         {
             // Update motion model
+            // motion model is Tcm multiply continuously
             if(!mLastFrame.mTcw.empty())
             {
                 cv::Mat LastTwc = cv::Mat::eye(4,4,CV_32F);
@@ -562,10 +574,11 @@ void Tracking::StereoInitialization()
 
 void Tracking::MonocularInitialization()
 {
-
+    // have not imtializer yet,at the very first, only one frame
     if(!mpInitializer)
     {
         // Set Reference Frame
+        // mvkeys: vector of keypoints
         if(mCurrentFrame.mvKeys.size()>100)
         {
             mInitialFrame = Frame(mCurrentFrame);
@@ -578,12 +591,13 @@ void Tracking::MonocularInitialization()
                 delete mpInitializer;
 
             mpInitializer =  new Initializer(mCurrentFrame,1.0,200);
-
+            // matches use to init
             fill(mvIniMatches.begin(),mvIniMatches.end(),-1);
 
             return;
         }
     }
+    // two frame
     else
     {
         // Try to initialize
@@ -615,6 +629,7 @@ void Tracking::MonocularInitialization()
         {
             for(size_t i=0, iend=mvIniMatches.size(); i<iend;i++)
             {
+                // delete outlier
                 if(mvIniMatches[i]>=0 && !vbTriangulated[i])
                 {
                     mvIniMatches[i]=-1;
@@ -772,6 +787,7 @@ bool Tracking::TrackReferenceKeyFrame()
     mCurrentFrame.mvpMapPoints = vpMapPointMatches;
     mCurrentFrame.SetPose(mLastFrame.mTcw);
 
+    // PnP
     Optimizer::PoseOptimization(&mCurrentFrame);
 
     // Discard outliers

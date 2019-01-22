@@ -90,7 +90,7 @@ public:
 
     // Variables used by the tracking
     float mTrackProjX;
-    float mTrackProjY;
+    float mTrackProjY; 
     float mTrackProjXR;
     bool mbTrackInView;
     int mnTrackScaleLevel;
@@ -115,18 +115,23 @@ public:
 protected:    
 
      // Position in absolute coordinates
+     // x
      cv::Mat mWorldPos;
 
      // Keyframes observing the point and associated index in keyframe
+     // ki
      std::map<KeyFrame*,size_t> mObservations;
 
      // Mean viewing direction
+     // n
      cv::Mat mNormalVector;
 
      // Best descriptor to fast matching
+     // desp
      cv::Mat mDescriptor;
 
      // Reference KeyFrame
+     // fr
      KeyFrame* mpRefKF;
 
      // Tracking counters
@@ -138,6 +143,7 @@ protected:
      MapPoint* mpReplaced;
 
      // Scale invariance distances
+     // dmax dmin
      float mfMinDistance;
      float mfMaxDistance;
 

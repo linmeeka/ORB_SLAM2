@@ -86,6 +86,7 @@ public:
         LOST=3
     };
 
+    // 当前帧和上一帧的状态，用于选择如何估计当前帧（单目的时候是否重定位
     eTrackingState mState;
     eTrackingState mLastProcessedState;
 
@@ -105,6 +106,7 @@ public:
 
     // Lists used to recover the full camera trajectory at the end of the execution.
     // Basically we store the reference keyframe for each frame and its relative transformation
+    // 用于记录轨迹 to record the full camera trajectory
     list<cv::Mat> mlRelativeFramePoses;
     list<KeyFrame*> mlpReferences;
     list<double> mlFrameTimes;

@@ -160,6 +160,8 @@ private:
     std::thread* mptLoopClosing;
     std::thread* mptViewer;
 
+    // 互斥访问，以下三个互斥锁，分别表示同时只能运行其中的一个，locolization mode开启/关闭、tracking state 是什么？
+
     // Reset flag
     std::mutex mMutexReset;
     bool mbReset;

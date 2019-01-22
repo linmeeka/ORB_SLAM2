@@ -31,7 +31,7 @@
 
 #include <mutex>
 
-
+// seems like there is not direct contain object of class Frame
 namespace ORB_SLAM2
 {
 

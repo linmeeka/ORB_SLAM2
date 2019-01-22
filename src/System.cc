@@ -29,6 +29,13 @@
 namespace ORB_SLAM2
 {
 
+/*
+@ param
+strVocFile：字典文件
+strSettingsFile：setting文件
+sensor:使用的传感器类型
+bUseViewer：是否使用 viewer ？ 是什么？
+*/
 System::System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor,
                const bool bUseViewer):mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false),mbActivateLocalizationMode(false),
         mbDeactivateLocalizationMode(false)
@@ -61,6 +68,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     //Load ORB Vocabulary
     cout << endl << "Loading ORB Vocabulary. This could take a while..." << endl;
 
+    // 字典对象
     mpVocabulary = new ORBVocabulary();
     bool bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);
     if(!bVocLoad)
@@ -81,6 +89,8 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     mpFrameDrawer = new FrameDrawer(mpMap);
     mpMapDrawer = new MapDrawer(mpMap, strSettingsFile);
 
+    // 同时运行三个线程，tracking是主线程，并行的local mapping和loop closing，通过new thread创建
+    // mpxxx 是这个模块的对象，mpt xxx 是它的线程指针
     //Initialize the Tracking thread
     //(it will live in the main thread of execution, the one that called this constructor)
     mpTracker = new Tracking(this, mpVocabulary, mpFrameDrawer, mpMapDrawer,
@@ -97,6 +107,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     //Initialize the Viewer thread and launch
     if(bUseViewer)
     {
+        // 新建一个观测的进程
         mpViewer = new Viewer(this, mpFrameDrawer,mpMapDrawer,mpTracker,strSettingsFile);
         mptViewer = new thread(&Viewer::Run, mpViewer);
         mpTracker->SetViewer(mpViewer);
@@ -215,6 +226,11 @@ cv::Mat System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const doub
     return Tcw;
 }
 
+/*
+@ param
+im：当前帧图像
+timestamp：时间戳
+*/
 cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
 {
     if(mSensor!=MONOCULAR)
@@ -225,9 +241,12 @@ cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
 
     // Check mode change
     {
+        // mode 加锁
         unique_lock<mutex> lock(mMutexMode);
         if(mbActivateLocalizationMode)
         {
+            // 要停掉其他线程
+            // loop closing 呢？
             mpLocalMapper->RequestStop();
 
             // Wait until Local Mapping has effectively stopped
@@ -242,6 +261,7 @@ cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
         if(mbDeactivateLocalizationMode)
         {
             mpTracker->InformOnlyTracking(false);
+            // ？ 
             mpLocalMapper->Release();
             mbDeactivateLocalizationMode = false;
         }
@@ -257,8 +277,10 @@ cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
     }
     }
 
+    // 估计这一帧的位姿
     cv::Mat Tcw = mpTracker->GrabImageMonocular(im,timestamp);
 
+    // 获取关键点和生成的新地图点
     unique_lock<mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;
     mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
